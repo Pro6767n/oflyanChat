@@ -1,0 +1,60 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create React Native project
+        run: |
+          npx react-native@latest init tempProject --template react-native-template-typescript --skip-install
+
+      - name: Copy project files
+        run: |
+          cp -r src/ tempProject/src/
+          cp App.tsx tempProject/App.tsx
+          cp index.js tempProject/index.js
+          cp package.json tempProject/package.json
+          cp tsconfig.json tempProject/tsconfig.json
+          cp metro.config.js tempProject/metro.config.js
+          cp babel.config.js tempProject/babel.config.js
+          cp app.json tempProject/app.json
+          mv tempProject/* .
+          mv tempProject/.[!.]* . 2>/dev/null || true
+          rm -rf tempProject
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Android Release APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: oflyanChat-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
